@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 # ==========================================
 # ตั้งค่าหน้าเว็บ
 # ==========================================
-st.set_page_config(page_title="Gold Pro Analyzer", page_icon="🥇", layout="wide")
+st.set_page_config(page_title="Gold Pro Analyzer V5", page_icon="🥇", layout="wide")
 
 # ==========================================
 # ฟังก์ชันคำนวณ
@@ -30,10 +30,10 @@ def add_indicators(df):
 
 @st.cache_data(ttl=300)
 def fetch_market_data():
-    # เปลี่ยนตัวย่อ DXY เป็น DX=F เพื่อความเสถียรในการดึงข้อมูล
+    # เปลี่ยน DXY มาใช้ UUP (ETF ดอลลาร์สหรัฐ) เพื่อป้องกันค่า N/A
     tickers = {
         "Gold": "GC=F",
-        "DXY": "DX=F",
+        "DXY": "UUP",
         "Oil": "CL=F",
         "S&P500": "^GSPC",
         "Dow": "^DJI"
@@ -50,7 +50,6 @@ def fetch_market_data():
         except Exception:
             pass
             
-    # ดึงข่าวแบบป้องกัน Error ป้องกันเว็บพัง
     news_list = []
     try:
         gold_ticker = yf.Ticker("GC=F")
@@ -90,7 +89,7 @@ with st.sidebar:
 # ==========================================
 # UI: Main Page
 # ==========================================
-st.title("🥇 XAU/USD Pro Analyzer")
+st.title("🥇 XAU/USD Pro Analyzer V5")
 st.caption("ระบบวิเคราะห์ราคาทองคำและตลาดสากลแบบเรียลไทม์")
 
 try:
@@ -102,11 +101,11 @@ try:
         
     df_gold = add_indicators(data["Gold"])
     
-    # 1. Macro Dashboard (ป้องการค่า nan)
+    # 1. Macro Dashboard
     cols = st.columns(5)
     assets = [
         ("Gold", "ทองคำ", "🥇"), 
-        ("DXY", "ดอลลาร์", "💵"), 
+        ("DXY", "ดอลลาร์ (UUP)", "💵"), 
         ("Oil", "น้ำมัน WTI", "🛢️"), 
         ("S&P500", "S&P 500", "📈"), 
         ("Dow", "Dow Jones", "📉")
