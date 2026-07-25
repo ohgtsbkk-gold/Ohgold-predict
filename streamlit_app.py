@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 # ==========================================
 # ตั้งค่าหน้าเว็บ
 # ==========================================
-st.set_page_config(page_title="Gold Pro Analyzer V3", page_icon="🥇", layout="wide")
+st.set_page_config(page_title="Gold Pro Analyzer", page_icon="🥇", layout="wide")
 
 # ==========================================
 # ฟังก์ชันคำนวณ
@@ -30,25 +30,39 @@ def add_indicators(df):
 
 @st.cache_data(ttl=300)
 def fetch_market_data():
+    # เปลี่ยนตัวย่อ DXY เป็น DX=F เพื่อความเสถียรในการดึงข้อมูล
     tickers = {
         "Gold": "GC=F",
-        "DXY": "DX-Y.NYB",
+        "DXY": "DX=F",
         "Oil": "CL=F",
         "S&P500": "^GSPC",
         "Dow": "^DJI"
     }
     data = {}
     for name, symbol in tickers.items():
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(period="3mo", interval="1d")
-        if not df.empty:
-            data[name] = df
+        try:
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(period="3mo", interval="1d")
+            if not df.empty and 'Close' in df.columns:
+                df = df.dropna(subset=['Close'])
+                if not df.empty:
+                    data[name] = df
+        except Exception:
+            pass
             
+    # ดึงข่าวแบบป้องกัน Error ป้องกันเว็บพัง
+    news_list = []
     try:
-        news_raw = yf.Ticker("GC=F").news
-        news_list = [n.get('title', '') for n in news_raw if 'title' in n]
-    except:
-        news_list = []
+        gold_ticker = yf.Ticker("GC=F")
+        if hasattr(gold_ticker, 'news') and gold_ticker.news:
+            for n in gold_ticker.news:
+                title = n.get('title', '')
+                if not title and 'content' in n:
+                    title = n['content'].get('title', '')
+                if title:
+                    news_list.append(title)
+    except Exception:
+        pass
         
     return data, news_list
 
@@ -76,23 +90,39 @@ with st.sidebar:
 # ==========================================
 # UI: Main Page
 # ==========================================
-st.title("🥇 XAU/USD Pro Analyzer V3")
-st.caption("Intermarket Analysis & Multi-Style Trading Gauges")
+st.title("🥇 XAU/USD Pro Analyzer V4")
+st.caption("ระบบวิเคราะห์ราคาทองคำและตลาดสากลแบบเรียลไทม์")
 
 try:
     data, recent_news = fetch_market_data()
+    
+    if "Gold" not in data or data["Gold"].empty:
+        st.error("ไม่สามารถโหลดข้อมูลราคาทองคำได้ในขณะนี้ กรุณากดรีเฟรชอีกครั้ง")
+        st.stop()
+        
     df_gold = add_indicators(data["Gold"])
     
-    # 1. Macro Dashboard
+    # 1. Macro Dashboard (ป้องการค่า nan)
     cols = st.columns(5)
-    assets = [("Gold", "ทองคำ", "🥇"), ("DXY", "ดอลลาร์", "💵"), ("Oil", "น้ำมัน WTI", "🛢️"), ("S&P500", "S&P 500", "📈"), ("Dow", "Dow Jones", "📉")]
+    assets = [
+        ("Gold", "ทองคำ", "🥇"), 
+        ("DXY", "ดอลลาร์", "💵"), 
+        ("Oil", "น้ำมัน WTI", "🛢️"), 
+        ("S&P500", "S&P 500", "📈"), 
+        ("Dow", "Dow Jones", "📉")
+    ]
     
     for i, (key, name, icon) in enumerate(assets):
-        if key in data:
-            curr = data[key]['Close'].iloc[-1]
-            prev = data[key]['Close'].iloc[-2]
-            diff = curr - prev
-            cols[i].metric(f"{icon} {name}", f"{curr:,.2f}", f"{diff:,.2f}")
+        if key in data and len(data[key]) >= 2:
+            try:
+                curr = float(data[key]['Close'].iloc[-1])
+                prev = float(data[key]['Close'].iloc[-2])
+                diff = curr - prev
+                cols[i].metric(f"{icon} {name}", f"{curr:,.2f}", f"{diff:,.2f}")
+            except Exception:
+                cols[i].metric(f"{icon} {name}", "N/A", "N/A")
+        else:
+            cols[i].metric(f"{icon} {name}", "N/A", "N/A")
             
     st.write("---")
 
@@ -102,15 +132,15 @@ try:
     recent_30 = df_gold.tail(30)
     max_price = recent_30['High'].max()
     min_price = recent_30['Low'].min()
-    diff = max_price - min_price
+    diff_val = max_price - min_price
     
     fib_levels = {
         "0.0% (High)": max_price,
-        "23.6%": max_price - 0.236 * diff,
-        "38.2%": max_price - 0.382 * diff,
-        "50.0%": max_price - 0.5 * diff,
-        "61.8%": max_price - 0.618 * diff,
-        "78.6%": max_price - 0.786 * diff,
+        "23.6%": max_price - 0.236 * diff_val,
+        "38.2%": max_price - 0.382 * diff_val,
+        "50.0%": max_price - 0.5 * diff_val,
+        "61.8%": max_price - 0.618 * diff_val,
+        "78.6%": max_price - 0.786 * diff_val,
         "100.0% (Low)": min_price
     }
 
@@ -128,9 +158,8 @@ try:
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), height=500, xaxis_rangeslider_visible=False)
     st.plotly_chart(fig, use_container_width=True)
 
-    # 3. หน้าปัด Gauge เลือกได้ 2 แบบ (Day Trade / Swing Trade)
+    # 3. หน้าปัด Gauge เลือกสไตล์
     st.subheader("🧭 หน้าปัดสรุปสัญญาณเทรดตามสไตล์")
-    
     trade_style = st.radio("เลือกสไตล์การเทรดของคุณ:", ["Day Trade (สั้น)", "Swing Trade (กลาง-ยาว)"], horizontal=True)
     
     curr_close = df_gold['Close'].iloc[-1]
@@ -150,14 +179,13 @@ try:
         gauge_val = 50 + (score / 2)
         title_text = "Day Trade Momentum (RSI + MACD)"
     else:
-        # Swing Trade อิงจากระยะห่างของราคาเทียบกับเส้น EMA หลัก
         score = 0
         if curr_close > ema20 and ema20 > ema50:
-            score = 80 # ขาขึ้นแข็งแกร่ง
+            score = 80 
         elif curr_close < ema20 and ema20 < ema50:
-            score = 20 # ขาลงชัดเจน
+            score = 20 
         else:
-            score = 50 # ไซด์เวย์ / พักตัว
+            score = 50 
         gauge_val = score
         title_text = "Swing Trade Trend (EMA 20 & 50 Alignment)"
 
@@ -187,7 +215,7 @@ try:
         for title in recent_news[:5]:
             st.write(f"- {title}")
     else:
-        st.info("ไม่มีข่าวที่ดึงได้ในขณะนี้")
+        st.info("ขณะนี้ระบบยังไม่พบลิงก์ข่าวใหม่ หรือ Yahoo Finance ปิดกั้นการดึงข้อมูลชั่วคราว")
 
 except Exception as e:
-    st.error(f"เกิดข้อผิดพลาดในการดึงข้อมูล: {e}")
+    st.error(f"เกิดข้อผิดพลาดในการประมวลผลข้อมูล: {e}")
