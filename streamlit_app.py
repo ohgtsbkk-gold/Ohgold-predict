@@ -30,10 +30,10 @@ def add_indicators(df):
 
 @st.cache_data(ttl=300)
 def fetch_market_data():
-    # เปลี่ยน DXY มาใช้ UUP (ETF ดอลลาร์สหรัฐ) เพื่อป้องกันค่า N/A
+    # กลับมาใช้ DX-Y.NYB สำหรับดัชนี DXY แท้ๆ
     tickers = {
         "Gold": "GC=F",
-        "DXY": "UUP",
+        "DXY": "DX-Y.NYB",
         "Oil": "CL=F",
         "S&P500": "^GSPC",
         "Dow": "^DJI"
@@ -105,7 +105,7 @@ try:
     cols = st.columns(5)
     assets = [
         ("Gold", "ทองคำ", "🥇"), 
-        ("DXY", "ดอลลาร์ (UUP)", "💵"), 
+        ("DXY", "ดอลลาร์ (DXY)", "💵"), 
         ("Oil", "น้ำมัน WTI", "🛢️"), 
         ("S&P500", "S&P 500", "📈"), 
         ("Dow", "Dow Jones", "📉")
