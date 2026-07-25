@@ -90,7 +90,7 @@ with st.sidebar:
 # ==========================================
 # UI: Main Page
 # ==========================================
-st.title("🥇 XAU/USD Pro Analyzer V4")
+st.title("🥇 XAU/USD Pro Analyzer")
 st.caption("ระบบวิเคราะห์ราคาทองคำและตลาดสากลแบบเรียลไทม์")
 
 try:
