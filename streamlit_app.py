@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 # ==========================================
 # ตั้งค่าหน้าเว็บ
 # ==========================================
-st.set_page_config(page_title="Gold Pro Analyzer V5", page_icon="🥇", layout="wide")
+st.set_page_config(page_title="Gold Pro Analyzer", page_icon="🥇", layout="wide")
 
 # ==========================================
 # ฟังก์ชันคำนวณ
@@ -89,7 +89,7 @@ with st.sidebar:
 # ==========================================
 # UI: Main Page
 # ==========================================
-st.title("🥇 XAU/USD Pro Analyzer V5")
+st.title("🥇 XAU/USD Pro Analyzer")
 st.caption("ระบบวิเคราะห์ราคาทองคำและตลาดสากลแบบเรียลไทม์")
 
 try:
