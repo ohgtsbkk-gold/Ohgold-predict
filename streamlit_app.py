@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 # ==========================================
 # ตั้งค่าหน้าเว็บ
 # ==========================================
-st.set_page_config(page_title="Gold Pro Analyzer", page_icon="🥇", layout="wide")
+st.set_page_config(page_title="Gold Pro Analyzer V8", page_icon="🥇", layout="wide")
 
 # ==========================================
 # ฟังก์ชันคำนวณ
@@ -30,13 +30,14 @@ def add_indicators(df):
 
 @st.cache_data(ttl=300)
 def fetch_market_data():
-    # กลับมาใช้ DX-Y.NYB สำหรับดัชนี DXY แท้ๆ
+    # เพิ่ม Nasdaq (^IXIC) เข้าไปในรายการดึงข้อมูล
     tickers = {
         "Gold": "GC=F",
         "DXY": "DX-Y.NYB",
         "Oil": "CL=F",
         "S&P500": "^GSPC",
-        "Dow": "^DJI"
+        "Dow": "^DJI",
+        "Nasdaq": "^IXIC"
     }
     data = {}
     for name, symbol in tickers.items():
@@ -89,7 +90,7 @@ with st.sidebar:
 # ==========================================
 # UI: Main Page
 # ==========================================
-st.title("🥇 XAU/USD Pro Analyzer")
+st.title("🥇 XAU/USD Pro Analyzer V8")
 st.caption("ระบบวิเคราะห์ราคาทองคำและตลาดสากลแบบเรียลไทม์")
 
 try:
@@ -101,14 +102,15 @@ try:
         
     df_gold = add_indicators(data["Gold"])
     
-    # 1. Macro Dashboard
-    cols = st.columns(5)
+    # 1. Macro Dashboard (ขยายเป็น 6 คอลัมน์)
+    cols = st.columns(6)
     assets = [
         ("Gold", "ทองคำ", "🥇"), 
         ("DXY", "ดอลลาร์ (DXY)", "💵"), 
         ("Oil", "น้ำมัน WTI", "🛢️"), 
         ("S&P500", "S&P 500", "📈"), 
-        ("Dow", "Dow Jones", "📉")
+        ("Dow", "Dow Jones", "📉"),
+        ("Nasdaq", "Nasdaq", "💻")
     ]
     
     for i, (key, name, icon) in enumerate(assets):
