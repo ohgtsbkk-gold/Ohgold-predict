@@ -7,10 +7,10 @@ import plotly.graph_objects as go
 # ==========================================
 # ตั้งค่าหน้าเว็บ
 # ==========================================
-st.set_page_config(page_title="Gold Pro Analyzer V8", page_icon="🥇", layout="wide")
+st.set_page_config(page_title="Gold Pro Analyzer V9", page_icon="🥇", layout="wide")
 
 # ==========================================
-# ฟังก์ชันคำนวณ
+# ฟังก์ชันคำนวณ Indicator
 # ==========================================
 def add_indicators(df):
     delta = df['Close'].diff()
@@ -30,7 +30,6 @@ def add_indicators(df):
 
 @st.cache_data(ttl=300)
 def fetch_market_data():
-    # เพิ่ม Nasdaq (^IXIC) เข้าไปในรายการดึงข้อมูล
     tickers = {
         "Gold": "GC=F",
         "DXY": "DX-Y.NYB",
@@ -90,8 +89,8 @@ with st.sidebar:
 # ==========================================
 # UI: Main Page
 # ==========================================
-st.title("🥇 XAU/USD Pro Analyzer V8")
-st.caption("ระบบวิเคราะห์ราคาทองคำและตลาดสากลแบบเรียลไทม์")
+st.title("🥇 XAU/USD Pro Analyzer V9")
+st.caption("ระบบวิเคราะห์ราคาทองคำ ตลาดสากล แนวรับ-แนวต้าน และคำแนะนำการซื้อขายแบบเรียลไทม์")
 
 try:
     data, recent_news = fetch_market_data()
@@ -102,7 +101,7 @@ try:
         
     df_gold = add_indicators(data["Gold"])
     
-    # 1. Macro Dashboard (ขยายเป็น 6 คอลัมน์)
+    # 1. Macro Dashboard (6 คอลัมน์)
     cols = st.columns(6)
     assets = [
         ("Gold", "ทองคำ", "🥇"), 
@@ -159,19 +158,46 @@ try:
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), height=500, xaxis_rangeslider_visible=False)
     st.plotly_chart(fig, use_container_width=True)
 
-    # 3. หน้าปัด Gauge เลือกสไตล์
-    st.subheader("🧭 หน้าปัดสรุปสัญญาณเทรดตามสไตล์")
+    # ==========================================
+    # 3. คำนวณแนวรับ - แนวต้าน (Pivot Points)
+    # ==========================================
+    st.subheader("🛡️ แนวรับ - แนวต้าน สำคัญ (Pivot Points)")
+    last_row = df_gold.iloc[-2]  # ใช้แท่งเทียนวันก่อนหน้าคำนวณ
+    p_high = last_row['High']
+    p_low = last_row['Low']
+    p_close = last_row['Close']
+    
+    pivot = (p_high + p_low + p_close) / 3
+    r1 = (2 * pivot) - p_low
+    s1 = (2 * pivot) - p_high
+    r2 = pivot + (p_high - p_low)
+    s2 = pivot - (p_high - p_low)
+
+    r_col1, r_col2, r_col3, r_col4, r_col5 = st.columns(5)
+    r_col1.metric("แนวต้าน 2 (R2)", f"{r2:,.2f}")
+    r_col2.metric("แนวต้าน 1 (R1)", f"{r1:,.2f}")
+    r_col3.metric("จุดหมุน (Pivot)", f"{pivot:,.2f}")
+    r_col4.metric("แนวรับ 1 (S1)", f"{s1:,.2f}")
+    r_col5.metric("แนวรับ 2 (S2)", f"{s2:,.2f}")
+
+    st.write("---")
+
+    # ==========================================
+    # 4. หน้าปัด Gauge และคำแนะนำการซื้อขาย
+    # ==========================================
+    st.subheader("🧭 หน้าปัดสรุปสัญญาณเทรดและคำแนะนำ")
     trade_style = st.radio("เลือกสไตล์การเทรดของคุณ:", ["Day Trade (สั้น)", "Swing Trade (กลาง-ยาว)"], horizontal=True)
     
     curr_close = df_gold['Close'].iloc[-1]
     ema20 = df_gold['EMA20'].iloc[-1]
     ema50 = df_gold['EMA50'].iloc[-1]
+    rsi = df_gold['RSI'].iloc[-1]
+    macd = df_gold['MACD'].iloc[-1]
+    sig = df_gold['Signal'].iloc[-1]
+    
+    col_gauge, col_advice = st.columns([1, 1])
     
     if trade_style == "Day Trade (สั้น)":
-        rsi = df_gold['RSI'].iloc[-1]
-        macd = df_gold['MACD'].iloc[-1]
-        sig = df_gold['Signal'].iloc[-1]
-        
         score = 0
         if rsi > 65: score -= 30
         elif rsi < 35: score += 30
@@ -179,6 +205,20 @@ try:
         else: score -= 50
         gauge_val = 50 + (score / 2)
         title_text = "Day Trade Momentum (RSI + MACD)"
+        
+        # คำแนะนำ Day Trade
+        with col_advice:
+            st.markdown("### 💬 คำแนะนำสำหรับ Day Trade")
+            st.write(f"- **RSI (14):** `{rsi:.2f}`")
+            st.write(f"- **MACD Status:** `{'MACD ตัด Signal ขึ้น (Bullish)' if macd > sig else 'MACD ตัด Signal ลง (Bearish)'}`")
+            if rsi > 70:
+                st.error("🚨 **สถานะ: Overbought (ซื้อมากเกินไป)** ระวังแรงขายทำกำไรระยะสั้น หลีกเลี่ยงการไล่ราคาซื้อ")
+            elif rsi < 30:
+                st.success("🟢 **สถานะ: Oversold (ขายมากเกินไป)** เป็นจุดเฝ้าระวังเพื่อหาจังหวะ Buy เมื่อราคาเริ่มกลับตัว")
+            elif macd > sig:
+                st.success("📈 **คำแนะนำ:** โมเมนตัมขาขึ้นระยะสั้นได้เปรียบ หาจังหวะ Buy เมื่อราคาย่อตัวเข้าใกล้แนวรับ S1")
+            else:
+                st.error("📉 **คำแนะนำ:** โมเมนตัมขาลงระยะสั้นกดดัน หาจังหวะ Sell ตามแนวต้าน R1 หรือรอสัญญาณนิ่ง")
     else:
         score = 0
         if curr_close > ema20 and ema20 > ema50:
@@ -189,27 +229,42 @@ try:
             score = 50 
         gauge_val = score
         title_text = "Swing Trade Trend (EMA 20 & 50 Alignment)"
+        
+        # คำแนะนำ Swing Trade
+        with col_advice:
+            st.markdown("### 💬 คำแนะนำสำหรับ Swing Trade")
+            st.write(f"- **ราคาปัจจุบัน:** `${curr_close:,.2f}`")
+            st.write(f"- **EMA 20 / EMA 50:** `{ema20:,.2f}` / `{ema50:,.2f}`")
+            if curr_close > ema20 and ema20 > ema50:
+                st.success("🚀 **คำแนะนำ:** แนวโน้มหลักเป็น **Uptrend ขาขึ้นชัดเจน** ถือสถานะซื้อ (Hold Buy) หรือย่อซื้อสะสม (Buy on Dip) ใช้ EMA 20 เป็นจุด Stop Loss")
+            elif curr_close < ema20 and ema20 < ema50:
+                st.error("⚠️ **คำแนะนำ:** แนวโน้มหลักเป็น **Downtrend ขาลง** ควรงดการถือ Long ยาว หรือเน้นหาจังหวะ Sell เมื่อราคาเด้งชนแนวต้าน")
+            else:
+                st.warning("⚖️ **คำแนะนำ:** ตลาดอยู่ในช่วง **ไซด์เวย์ / เลือกทาง** รอดูความชัดเจนของการเบรกกรอบแนวรับ-แนวต้านสำคัญก่อนออกไม้ใหญ่")
 
-    fig_gauge = go.Figure(go.Indicator(
-        mode = "gauge+number",
-        value = gauge_val,
-        domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': title_text},
-        gauge = {
-            'axis': {'range': [0, 100]},
-            'bar': {'color': "darkblue"},
-            'steps': [
-                {'range': [0, 35], 'color': "red"},
-                {'range': [35, 65], 'color': "lightgray"},
-                {'range': [65, 100], 'color': "green"}],
-            'threshold': {
-                'line': {'color': "black", 'width': 4},
-                'thickness': 0.75,
-                'value': gauge_val}}))
-    fig_gauge.update_layout(height=250, margin=dict(l=20, r=20, t=40, b=20))
-    st.plotly_chart(fig_gauge, use_container_width=True)
+    with col_gauge:
+        fig_gauge = go.Figure(go.Indicator(
+            mode = "gauge+number",
+            value = gauge_val,
+            domain = {'x': [0, 1], 'y': [0, 1]},
+            title = {'text': title_text},
+            gauge = {
+                'axis': {'range': [0, 100]},
+                'bar': {'color': "darkblue"},
+                'steps': [
+                    {'range': [0, 35], 'color': "red"},
+                    {'range': [35, 65], 'color': "lightgray"},
+                    {'range': [65, 100], 'color': "green"}],
+                'threshold': {
+                    'line': {'color': "black", 'width': 4},
+                    'thickness': 0.75,
+                    'value': gauge_val}}))
+        fig_gauge.update_layout(height=260, margin=dict(l=20, r=20, t=40, b=20))
+        st.plotly_chart(fig_gauge, use_container_width=True)
 
-    # 4. ข่าว
+    # ==========================================
+    # 5. ข่าวตลาดล่าสุด
+    # ==========================================
     st.write("---")
     st.subheader("📰 ข่าวตลาดล่าสุด")
     if recent_news:
